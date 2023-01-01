@@ -579,9 +579,9 @@ class SupervisedRunner(BaseRunner):
             batch_loss = torch.sum(loss).cpu().item()
             mean_loss = batch_loss / len(loss)  # mean loss (over samples)
 
-            per_batch["targets"].append(targets.cpu().numpy())
-            per_batch["predictions"].append(predictions.cpu().numpy())
-            per_batch["metrics"].append([loss.cpu().numpy()])
+            per_batch["targets"].append(targets.detach().cpu().numpy())
+            per_batch["predictions"].append(predictions.detach().cpu().numpy())
+            per_batch["metrics"].append([loss.detach().cpu().numpy()])
             per_batch["IDs"].append(IDs)
 
             metrics = {"loss": mean_loss}
@@ -603,7 +603,7 @@ class SupervisedRunner(BaseRunner):
                 np.concatenate(per_batch["predictions"], axis=0)
             )
             probs = torch.nn.functional.softmax(
-                predictions
+                predictions, dim=0
             )  # (total_samples, num_classes) est. prob. for each class and sample
             predictions = (
                 torch.argmax(probs, dim=1).cpu().numpy()
