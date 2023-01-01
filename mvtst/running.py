@@ -490,7 +490,10 @@ class SupervisedRunner(BaseRunner):
 
         super(SupervisedRunner, self).__init__(*args, **kwargs)
 
-        if isinstance(args[3], torch.nn.CrossEntropyLoss):
+        if (len(args) > 3 and isinstance(args[3], torch.nn.CrossEntropyLoss)) or (
+            "loss_module" in kwargs
+            and isinstance(kwargs["loss_module"], torch.nn.CrossEntropyLoss)
+        ):
             self.classification = True  # True if classification, False if regression
             self.analyzer = analysis.Analyzer(print_conf_mat=True)
         else:
