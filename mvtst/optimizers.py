@@ -120,7 +120,7 @@ class RAdam(Optimizer):
                 if N_sma >= 5:
                     if group["weight_decay"] != 0:
                         p_data_fp32.add_(
-                            -group["weight_decay"] * group["lr"], p_data_fp32
+                            p_data_fp32, alpha=(-group["weight_decay"] * group["lr"])
                         )
                     denom = exp_avg_sq.sqrt().add_(group["eps"])
                     p_data_fp32.addcdiv_(
@@ -130,9 +130,9 @@ class RAdam(Optimizer):
                 elif step_size > 0:
                     if group["weight_decay"] != 0:
                         p_data_fp32.add_(
-                            -group["weight_decay"] * group["lr"], p_data_fp32
+                            p_data_fp32, alpha=(-group["weight_decay"] * group["lr"])
                         )
-                    p_data_fp32.add_(-step_size * group["lr"], exp_avg)
+                    p_data_fp32.add_(exp_avg, alpha=(-step_size * group["lr"]))
                     p.data.copy_(p_data_fp32)
 
         return loss
@@ -207,7 +207,7 @@ class PlainRAdam(Optimizer):
                 if N_sma >= 5:
                     if group["weight_decay"] != 0:
                         p_data_fp32.add_(
-                            -group["weight_decay"] * group["lr"], p_data_fp32
+                            p_data_fp32, alpha=(-group["weight_decay"] * group["lr"])
                         )
                     step_size = (
                         group["lr"]
@@ -228,10 +228,10 @@ class PlainRAdam(Optimizer):
                 elif self.degenerated_to_sgd:
                     if group["weight_decay"] != 0:
                         p_data_fp32.add_(
-                            -group["weight_decay"] * group["lr"], p_data_fp32
+                            p_data_fp32, alpha=(-group["weight_decay"] * group["lr"])
                         )
                     step_size = group["lr"] / (1 - beta1 ** state["step"])
-                    p_data_fp32.add_(-step_size, exp_avg)
+                    p_data_fp32.add_(exp_avg, alpha=-step_size)
                     p.data.copy_(p_data_fp32)
 
         return loss
@@ -308,7 +308,9 @@ class AdamW(Optimizer):
                 )
 
                 if group["weight_decay"] != 0:
-                    p_data_fp32.add_(-group["weight_decay"] * scheduled_lr, p_data_fp32)
+                    p_data_fp32.add_(
+                        p_data_fp32, alpha=(-group["weight_decay"] * scheduled_lr)
+                    )
 
                 p_data_fp32.addcdiv_(exp_avg, denom, value=(-step_size))
 
