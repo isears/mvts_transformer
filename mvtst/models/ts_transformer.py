@@ -465,11 +465,11 @@ class TSTransformerEncoderClassiregressor(nn.Module):
         return output
 
 
-class ConvTST(TSTransformerEncoderClassiregressor):
+class ConvTST(nn.Module):
     def __init__(
         self,
+        spectrogram_dims,  # Expect tuple of freq_dim x time_dim
         feat_dim,
-        max_len,
         d_model,
         n_heads,
         num_layers,
@@ -481,9 +481,26 @@ class ConvTST(TSTransformerEncoderClassiregressor):
         norm="BatchNorm",
         freeze=False,
     ):
-        super().__init__(
-            feat_dim,
-            max_len,
+        super(ConvTST, self).__init__()
+
+        self.act = _get_activation_fn(activation)
+        self.conv1 = torch.nn.Conv2d(
+            in_channels=feat_dim, out_channels=feat_dim, kernel_size=(5, 5)
+        )
+        self.maxpool1 = torch.nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
+
+        self.conv2 = torch.nn.Conv2d(
+            in_channels=feat_dim, out_channels=feat_dim, kernel_size=(5, 5)
+        )
+        self.maxpool2 = torch.nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
+
+        # Need to determine the "seq_len" after resultant convolutions w/dummy input to instantiate TST
+        conv_test = self._forward_conv(torch.rand(1, feat_dim, *spectrogram_dims))
+        post_conv_len = conv_test.shape[-1]
+
+        self.tst = TSTransformerEncoderClassiregressor(
+            feat_dim,  # i.e. number of EEG channels
+            post_conv_len,  # i.e. final dim of output after convolutions
             d_model,
             n_heads,
             num_layers,
@@ -495,3 +512,28 @@ class ConvTST(TSTransformerEncoderClassiregressor):
             norm,
             freeze,
         )
+
+    def _forward_conv(self, X):
+        output = self.conv1(X)
+        output = self.act(output)
+        output = self.maxpool1(output)
+
+        output = self.conv2(output)
+        output = self.act(output)
+        output = self.maxpool2(output)
+
+        output = torch.flatten(output, 2)
+
+        return output
+
+    def forward(self, X):
+        """
+        X (EEG spectrogram): (batch_size, n_channels, freq_dim, time_dim)
+        """
+        output = self._forward_conv(X)
+
+        # Original TST expects (batch_size, seq_len, feat_dim)
+        output = output.permute(0, 2, 1)
+        padding_masks = torch.ones_like(output[:, :, 0]).bool()
+
+        return self.tst.forward(output, padding_masks)
