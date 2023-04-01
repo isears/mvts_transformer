@@ -1,6 +1,7 @@
 from dataclasses import asdict, dataclass, fields
 
-from mvtst.optimizers import AdamW, PlainRAdam, RAdam
+# from mvtst.optimizers import AdamW, PlainRAdam, RAdam
+from torch.optim import Adam, AdamW, RAdam
 
 
 @dataclass
@@ -85,8 +86,8 @@ class TSTConfig:
     def get_optimizer_cls(self):
         if self.optimizer_name == "AdamW":
             return AdamW
-        elif self.optimizer_name == "PlainRAdam":
-            return PlainRAdam
+        elif self.optimizer_name == "Adam":
+            return Adam
         elif self.optimizer_name == "RAdam":
             return RAdam
         else:
@@ -122,4 +123,4 @@ class TSTConfig:
         return self.model_config.generate_params()
 
     def generate_optimizer_params(self) -> dict:
-        return dict(lr=self.lr)
+        return dict(lr=self.lr, weight_decay=self.weight_decay)
